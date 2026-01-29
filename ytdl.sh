@@ -129,6 +129,20 @@ get_mutagen_package_name() {
     esac
 }
 
+get_nodejs_package_name() {
+    local pm
+    pm=$(detect_package_manager)
+    
+    case "$pm" in
+        brew)
+            echo "node"
+            ;;
+        *)
+            echo "nodejs"
+            ;;
+    esac
+}
+
 check_dependencies() {
     print_header "CHECKING DEPENDENCIES"
     
@@ -143,6 +157,15 @@ check_dependencies() {
             print_success "$cmd found"
         fi
     done
+    
+    # Check for Node.js (required for YouTube JS challenges)
+    if command_exists node; then
+        print_success "nodejs found"
+    else
+        local nodejs_pkg
+        nodejs_pkg=$(get_nodejs_package_name)
+        missing+=("$nodejs_pkg")
+    fi
     
     # Check for mutagen (required for proper metadata embedding)
     if python_module_exists "mutagen"; then
@@ -249,6 +272,26 @@ update_ytdlp() {
     print_info "Checking for yt-dlp updates..."
     "$YTDLP_BIN" -U 2>&1 || true
     echo
+}
+
+# Get common yt-dlp args including JS runtime fix
+get_common_ytdlp_args() {
+    local -a args=()
+    
+    # Fix JavaScript runtime warning - enable node if available
+    if command_exists node; then
+        args+=('--js-runtimes' 'node')
+    fi
+    
+    # Retry options
+    args+=(
+        '--retries' '10'
+        '--fragment-retries' '999'
+        '--file-access-retries' '10'
+        '--extractor-retries' '5'
+    )
+    
+    printf '%s\0' "${args[@]}"
 }
 
 #-------------------------------------------------------------------------------
@@ -448,7 +491,7 @@ download_with_fallback() {
     local url="$2"
     local output_template="${3:-}"
     
-    # First attempt: web client without cookies
+    # First attempt: without cookies
     print_info "Attempting download..."
     if attempt_download "$mode" "$url" "" "$output_template" "false"; then
         return 0
@@ -492,7 +535,11 @@ attempt_download() {
     local output_template="${4:-}"
     local use_mobile="${5:-false}"
     
+    # Get common args
     local -a args=()
+    while IFS= read -r -d '' arg; do
+        args+=("$arg")
+    done < <(get_common_ytdlp_args)
     
     # Add cookies if provided
     if [[ -n "$cookies_file" ]]; then
@@ -503,14 +550,6 @@ attempt_download() {
     if [[ "$use_mobile" == "true" ]]; then
         args+=('--extractor-args' 'youtube:player_client=android,ios,web')
     fi
-    
-    # Retry options
-    args+=(
-        '--retries' '10'
-        '--fragment-retries' '999'
-        '--file-access-retries' '10'
-        '--extractor-retries' '5'
-    )
     
     if [[ "$mode" == "video" ]]; then
         # Video-specific args - prefer highest quality
@@ -526,10 +565,17 @@ attempt_download() {
             '--abort-on-unavailable-fragment'
         )
     else
-        # Audio-specific args
+        # Audio-specific args - high quality with all metadata
         args+=(
-            '-f' 'bestaudio[ext=m4a]/bestaudio/best'
+            '-f' 'bestaudio[ext=m4a]/bestaudio'
             '-S' 'ext:m4a:mp3:ogg'
+            '--embed-thumbnail'
+            '--embed-metadata'
+            '--embed-chapters'
+            '--write-subs'
+            '--write-auto-subs'
+            '--sub-langs' 'en'
+            '--convert-subs' 'srt'
         )
     fi
     
@@ -550,323 +596,15 @@ download_video() {
     download_with_fallback "video" "$url"
 }
 
-download_audio_with_frame() {
+download_audio() {
     local url="$1"
     
-    print_header "AUDIO + SINGLE FRAME VIDEO"
-    print_info "This mode saves space by using one frame for the entire video"
+    print_header "DOWNLOADING AUDIO"
+    print_info "High quality audio with embedded metadata, chapters, and thumbnail"
+    print_info "Subtitles saved as separate .srt file"
     echo
     
-    # Create temp directory
-    local temp_dir
-    temp_dir=$(mktemp -d -t ytdl_XXXXXX)
-    
-    # Setup cleanup trap
-    trap "rm -rf '$temp_dir'" RETURN
-    
-    print_info "Working directory: $temp_dir"
-    
-    #---------------------------------------------------------------------------
-    # Step 1: Get video metadata
-    #---------------------------------------------------------------------------
-    print_info "Fetching video information..."
-    
-    local video_info=""
-    local cookies_file=""
-    
-    # Try without cookies first
-    if ! video_info=$("$YTDLP_BIN" -j "$url" 2>/dev/null); then
-        # Retry with cookies
-        if cookies_file=$(find_cookies 2>/dev/null); then
-            print_warning "Retrying with cookies..."
-            if ! video_info=$("$YTDLP_BIN" --cookies "$cookies_file" -j "$url" 2>/dev/null); then
-                print_error "Failed to fetch video info"
-                return 1
-            fi
-        else
-            print_error "Failed to fetch video info"
-            return 1
-        fi
-    fi
-    
-    local video_title duration uploader upload_date description
-    video_title=$(echo "$video_info" | jq -r '.title // "video"')
-    duration=$(echo "$video_info" | jq -r '.duration // 0')
-    uploader=$(echo "$video_info" | jq -r '.uploader // ""')
-    upload_date=$(echo "$video_info" | jq -r '.upload_date // ""')
-    description=$(echo "$video_info" | jq -r '.description // ""' | head -c 2000)
-    
-    local safe_title
-    safe_title=$(sanitize_filename "$video_title")
-    
-    echo "  Title:    $video_title"
-    echo "  Duration: ${duration}s"
-    echo "  Uploader: $uploader"
-    echo
-    
-    #---------------------------------------------------------------------------
-    # Step 2: Download audio (with fallback)
-    #---------------------------------------------------------------------------
-    print_info "Downloading audio track..."
-    
-    if ! download_with_fallback "audio" "$url" "$temp_dir/audio.%(ext)s"; then
-        print_error "Failed to download audio"
-        return 1
-    fi
-    
-    local audio_file
-    audio_file=$(find "$temp_dir" -name 'audio.*' -type f | head -1)
-    
-    if [[ -z "$audio_file" || ! -f "$audio_file" ]]; then
-        print_error "Failed to download audio - no file found"
-        return 1
-    fi
-    print_success "Audio downloaded: $(basename "$audio_file")"
-    
-    #---------------------------------------------------------------------------
-    # Step 3: Download thumbnail
-    #---------------------------------------------------------------------------
-    print_info "Downloading thumbnail..."
-    
-    # Try without cookies first
-    if ! "$YTDLP_BIN" \
-        --write-thumbnail \
-        --skip-download \
-        --convert-thumbnails jpg \
-        -o "$temp_dir/thumbnail" \
-        "$url" 2>/dev/null; then
-        # Retry with cookies if available
-        if cookies_file=$(find_cookies 2>/dev/null); then
-            "$YTDLP_BIN" \
-                --cookies "$cookies_file" \
-                --write-thumbnail \
-                --skip-download \
-                --convert-thumbnails jpg \
-                -o "$temp_dir/thumbnail" \
-                "$url" 2>/dev/null || true
-        fi
-    fi
-    
-    local thumb_file
-    thumb_file=$(find "$temp_dir" -name 'thumbnail*.jpg' -type f 2>/dev/null | head -1)
-    
-    # Also check for webp that wasn't converted
-    if [[ -z "$thumb_file" || ! -f "$thumb_file" ]]; then
-        thumb_file=$(find "$temp_dir" -name 'thumbnail*.webp' -type f 2>/dev/null | head -1)
-        if [[ -n "$thumb_file" && -f "$thumb_file" ]]; then
-            local jpg_thumb="$temp_dir/thumbnail.jpg"
-            ffmpeg -y -i "$thumb_file" "$jpg_thumb" 2>/dev/null && thumb_file="$jpg_thumb"
-        fi
-    fi
-    
-    # Fallback: create a black frame
-    if [[ -z "$thumb_file" || ! -f "$thumb_file" ]]; then
-        print_warning "No thumbnail found, creating placeholder..."
-        thumb_file="$temp_dir/thumbnail.jpg"
-        ffmpeg -y -f lavfi -i color=c=black:s=1920x1080:d=1 \
-            -vframes 1 -q:v 2 "$thumb_file" 2>/dev/null
-    else
-        print_success "Thumbnail downloaded"
-    fi
-    
-    #---------------------------------------------------------------------------
-    # Step 4: Download subtitles
-    #---------------------------------------------------------------------------
-    print_info "Downloading subtitles..."
-    
-    # Try without cookies first
-    if ! "$YTDLP_BIN" \
-        --write-subs \
-        --write-auto-subs \
-        --sub-langs en \
-        --sub-format 'srt/vtt/best' \
-        --convert-subs srt \
-        --skip-download \
-        -o "$temp_dir/subs" \
-        "$url" 2>/dev/null; then
-        # Retry with cookies if available
-        if cookies_file=$(find_cookies 2>/dev/null); then
-            "$YTDLP_BIN" \
-                --cookies "$cookies_file" \
-                --write-subs \
-                --write-auto-subs \
-                --sub-langs en \
-                --sub-format 'srt/vtt/best' \
-                --convert-subs srt \
-                --skip-download \
-                -o "$temp_dir/subs" \
-                "$url" 2>/dev/null || true
-        fi
-    fi
-    
-    local subs_file
-    subs_file=$(find "$temp_dir" -name 'subs*.srt' -type f 2>/dev/null | head -1)
-    
-    if [[ -n "$subs_file" && -f "$subs_file" ]]; then
-        print_success "Subtitles downloaded"
-    else
-        print_warning "No subtitles available"
-        subs_file=""
-    fi
-    
-    #---------------------------------------------------------------------------
-    # Step 5: Extract chapters
-    #---------------------------------------------------------------------------
-    print_info "Processing chapters..."
-    
-    local chapters_file=""
-    local has_chapters
-    has_chapters=$(echo "$video_info" | jq 'has("chapters") and (.chapters | length > 0)')
-    
-    if [[ "$has_chapters" == "true" ]]; then
-        chapters_file="$temp_dir/chapters.ffmeta"
-        {
-            echo ";FFMETADATA1"
-            echo "title=$video_title"
-            [[ -n "$uploader" ]] && echo "artist=$uploader"
-            echo ""
-            echo "$video_info" | jq -r '
-                .chapters[] | 
-                "[CHAPTER]\nTIMEBASE=1/1000\nSTART=\((.start_time * 1000) | floor)\nEND=\((.end_time * 1000) | floor)\ntitle=\(.title // "Chapter")\n"
-            '
-        } > "$chapters_file"
-        print_success "Chapters extracted: $(echo "$video_info" | jq '.chapters | length') chapters"
-    else
-        print_warning "No chapters available"
-    fi
-    
-    #---------------------------------------------------------------------------
-    # Step 6: Create single-frame video with ffmpeg
-    #---------------------------------------------------------------------------
-    print_info "Creating optimized video file..."
-    
-    local download_dir
-    download_dir=$(get_config_value "DownloadDir")
-    local output_file="$download_dir/${safe_title}_audio.mp4"
-    
-    # Ensure unique filename
-    local counter=1
-    while [[ -f "$output_file" ]]; do
-        output_file="$download_dir/${safe_title}_audio_${counter}.mp4"
-        ((counter++))
-    done
-    
-    # Build ffmpeg command dynamically
-    local -a ffmpeg_inputs=()
-    local -a ffmpeg_maps=()
-    local -a ffmpeg_codecs=()
-    local input_idx=0
-    
-    # Input 0: thumbnail as video source (looped)
-    ffmpeg_inputs+=(-loop 1 -framerate 1 -i "$thumb_file")
-    ffmpeg_maps+=(-map "${input_idx}:v")
-    ((input_idx++))
-    
-    # Input 1: audio
-    ffmpeg_inputs+=(-i "$audio_file")
-    ffmpeg_maps+=(-map "${input_idx}:a")
-    ((input_idx++))
-    
-    # Input 2: chapters metadata (optional)
-    local metadata_input=""
-    if [[ -n "$chapters_file" && -f "$chapters_file" ]]; then
-        ffmpeg_inputs+=(-i "$chapters_file")
-        metadata_input="-map_metadata $input_idx"
-        ((input_idx++))
-    fi
-    
-    # Input 3: subtitles (optional)
-    if [[ -n "$subs_file" && -f "$subs_file" ]]; then
-        ffmpeg_inputs+=(-i "$subs_file")
-        ffmpeg_maps+=(-map "${input_idx}:s?")
-        ffmpeg_codecs+=(-c:s mov_text)
-        ((input_idx++))
-    fi
-    
-    # Video codec: ultra-compressed static image
-    ffmpeg_codecs+=(
-        -c:v libx264
-        -tune stillimage
-        -crf 51
-        -preset ultrafast
-        -pix_fmt yuv420p
-    )
-    
-    # Audio codec: high quality AAC
-    ffmpeg_codecs+=(
-        -c:a aac
-        -b:a 192k
-    )
-    
-    # Metadata
-    local -a metadata_args=(
-        -metadata "title=$video_title"
-    )
-    [[ -n "$uploader" ]] && metadata_args+=(-metadata "artist=$uploader")
-    [[ -n "$upload_date" ]] && metadata_args+=(-metadata "date=$upload_date")
-    [[ -n "$description" ]] && metadata_args+=(-metadata "comment=${description:0:500}")
-    
-    # Run ffmpeg
-    print_info "Encoding with ffmpeg (this may take a moment)..."
-    
-    # shellcheck disable=SC2086
-    ffmpeg -y \
-        "${ffmpeg_inputs[@]}" \
-        "${ffmpeg_maps[@]}" \
-        $metadata_input \
-        "${ffmpeg_codecs[@]}" \
-        "${metadata_args[@]}" \
-        -shortest \
-        -movflags +faststart \
-        -loglevel warning \
-        -stats \
-        "$output_file"
-    
-    #---------------------------------------------------------------------------
-    # Step 7: Embed thumbnail as cover art
-    #---------------------------------------------------------------------------
-    if [[ -f "$thumb_file" ]]; then
-        print_info "Embedding thumbnail as cover art..."
-        
-        local temp_output="$temp_dir/final.mp4"
-        
-        if ffmpeg -y \
-            -i "$output_file" \
-            -i "$thumb_file" \
-            -map 0 -map 1 \
-            -c copy \
-            -disposition:v:0 default \
-            -disposition:v:1 attached_pic \
-            -loglevel warning \
-            "$temp_output" 2>/dev/null; then
-            mv "$temp_output" "$output_file"
-            print_success "Cover art embedded"
-        else
-            print_warning "Could not embed cover art (file still valid)"
-        fi
-    fi
-    
-    #---------------------------------------------------------------------------
-    # Done!
-    #---------------------------------------------------------------------------
-    echo
-    print_success "Download complete!"
-    echo
-    echo "  Output: $output_file"
-    echo "  Size:   $(du -h "$output_file" | cut -f1)"
-    echo
-    
-    # Show space savings estimate
-    local audio_size video_estimate
-    audio_size=$(stat -c%s "$audio_file" 2>/dev/null || stat -f%z "$audio_file" 2>/dev/null || echo "0")
-    video_estimate=$((audio_size * 3))  # Rough estimate: video usually 3x audio
-    local final_size
-    final_size=$(stat -c%s "$output_file" 2>/dev/null || stat -f%z "$output_file" 2>/dev/null || echo "0")
-    
-    if [[ $video_estimate -gt 0 && $final_size -gt 0 ]]; then
-        local savings=$(( (video_estimate - final_size) * 100 / video_estimate ))
-        [[ $savings -gt 0 ]] && print_info "Estimated space savings: ~${savings}% vs full video"
-    fi
+    download_with_fallback "audio" "$url"
 }
 
 #-------------------------------------------------------------------------------
@@ -878,7 +616,7 @@ show_menu() {
     echo -e "${CYAN}│${NC}${BOLD}${YELLOW}       YOUTUBE DOWNLOADER - LINUX        ${NC}${CYAN}│${NC}"
     echo -e "${CYAN}├─────────────────────────────────────────┤${NC}"
     echo -e "${CYAN}│${NC}  ${GREEN}1)${NC} ${BOLD}VIDEO${NC}    ${WHITE}(BEST QUALITY MP4)${NC}         ${CYAN}│${NC}"
-    echo -e "${CYAN}│${NC}  ${GREEN}2)${NC} ${BOLD}AUDIO+${NC}   ${WHITE}(AUDIO + SINGLE FRAME)${NC}     ${CYAN}│${NC}"
+    echo -e "${CYAN}│${NC}  ${GREEN}2)${NC} ${BOLD}AUDIO${NC}    ${WHITE}(BEST QUALITY + METADATA)${NC}  ${CYAN}│${NC}"
     echo -e "${CYAN}│${NC}                                         ${CYAN}│${NC}"
     echo -e "${CYAN}│${NC}  ${MAGENTA}S)${NC} ${BOLD}SETUP${NC}    ${WHITE}(RECONFIGURE)${NC}              ${CYAN}│${NC}"
     echo -e "${CYAN}│${NC}  ${MAGENTA}U)${NC} ${BOLD}UPDATE${NC}   ${WHITE}(UPDATE YT-DLP)${NC}            ${CYAN}│${NC}"
@@ -926,12 +664,12 @@ main() {
             1)
                 url=$(get_url)
                 update_ytdlp
-                download_video "$url"
+                download_video "$url" || true
                 ;;
             2)
                 url=$(get_url)
                 update_ytdlp
-                download_audio_with_frame "$url"
+                download_audio "$url" || true
                 ;;
             s|S)
                 run_setup
@@ -980,7 +718,7 @@ case "${1:-}" in
         download_dir=$(get_config_value "DownloadDir")
         [[ -z "$download_dir" ]] && run_setup && download_dir=$(get_config_value "DownloadDir")
         cd "$download_dir"
-        download_video "$1"
+        download_video "$1" || true
         ;;
     *)
         main
