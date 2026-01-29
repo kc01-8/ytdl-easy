@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader Linux Script Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+        
+        .code-font { font-family: 'JetBrains Mono', monospace; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+        
+        pre::-webkit-scrollbar { height: 8px; width: 8px; }
+        pre::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+        pre::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        pre::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+        }
+        
+        .card-glow {
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.15);
+        }
+        
+        .copy-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen font-inter text-gray-100">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <div class="inline-flex items-center gap-3 mb-4">
+                <svg class="w-12 h-12 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/>
+                    <path fill="#fff" d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                </svg>
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
+                    YouTube Downloader for Linux
+                </h1>
+            </div>
+            <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                Converted from your Windows PowerShell script with automatic setup, audio extraction, 
+                and the innovative single-frame video mode to save space while preserving metadata.
+            </p>
+        </header>
+
+        <!-- Features Grid -->
+        <div class="grid md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                <div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center mb-3">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-white mb-1">Auto Setup</h3>
+                <p class="text-sm text-gray-400">Downloads latest yt-dlp & ffmpeg check, configures paths automatically</p>
+            </div>
+            <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                <div class="w-10 h-10 bg-violet-500/20 rounded-lg flex items-center justify-center mb-3">
+                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-white mb-1">Audio Extraction</h3>
+                <p class="text-sm text-gray-400">Extract high-quality audio with metadata, thumbnail, and chapters</p>
+            </div>
+            <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                <div class="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center mb-3">
+                    <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-white mb-1">Single Frame Mode</h3>
+                <p class="text-sm text-gray-400">Audio + 1 frame video, keeps subtitles & metadata, saves ~90% space</p>
+            </div>
+        </div>
+
+        <!-- Main Script Card -->
+        <div class="bg-slate-800/80 rounded-2xl card-glow border border-slate-700 overflow-hidden mb-8">
+            <div class="flex items-center justify-between px-6 py-4 bg-slate-900/50 border-b border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="flex gap-1.5">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <span class="code-font text-sm text-gray-400">ytdl.sh</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyScript()" class="copy-btn flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm font-medium transition-all">
+                        <svg id="copy-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        <span id="copy-text">Copy</span>
+                    </button>
+                    <button onclick="downloadScript()" class="copy-btn flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span>Download</span>
+                    </button>
+                </div>
+            </div>
+            <div class="p-4 max-h-[600px] overflow-auto">
+                <pre id="script-content" class="code-font text-sm text-gray-300 whitespace-pre leading-relaxed"></pre>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-slate-800/50 rounded-xl border border-slate-700 p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Installation Instructions
+            </h2>
+            <div class="space-y-3 text-gray-300">
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-violet-500/30 rounded-full flex items-center justify-center text-sm font-medium text-violet-300">1</span>
+                    <p>Copy the script above and save it as <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-violet-300">ytdl.sh</code></p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-violet-500/30 rounded-full flex items-center justify-center text-sm font-medium text-violet-300">2</span>
+                    <p>Make it executable: <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-green-300">chmod +x ytdl.sh</code></p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-violet-500/30 rounded-full flex items-center justify-center text-sm font-medium text-violet-300">3</span>
+                    <p>Run it: <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-green-300">./ytdl.sh</code> — First run will auto-setup everything!</p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-violet-500/30 rounded-full flex items-center justify-center text-sm font-medium text-violet-300">4</span>
+                    <p>Optional: Place a <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-yellow-300">cookies.txt</code> next to the script for age-restricted content</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Modes Info -->
+        <div class="grid md:grid-cols-3 gap-4">
+            <div class="bg-gradient-to-br from-blue-900/40 to-slate-800/40 rounded-xl border border-blue-700/30 p-5">
+                <div class="text-2xl font-bold text-blue-400 mb-2">1</div>
+                <h3 class="font-semibold text-white mb-2">Video Mode</h3>
+                <p class="text-sm text-gray-400">Full video + audio, best quality, embedded thumbnails, chapters, and subtitles. Recoded to MP4.</p>
+            </div>
+            <div class="bg-gradient-to-br from-green-900/40 to-slate-800/40 rounded-xl border border-green-700/30 p-5">
+                <div class="text-2xl font-bold text-green-400 mb-2">2</div>
+                <h3 class="font-semibold text-white mb-2">Audio Only</h3>
+                <p class="text-sm text-gray-400">Extracts best audio as M4A/MP3, with embedded thumbnail and metadata. Smallest file size.</p>
+            </div>
+            <div class="bg-gradient-to-br from-pink-900/40 to-slate-800/40 rounded-xl border border-pink-700/30 p-5">
+                <div class="text-2xl font-bold text-pink-400 mb-2">3</div>
+                <h3 class="font-semibold text-white mb-2">Audio + Single Frame</h3>
+                <p class="text-sm text-gray-400">Full audio with a static thumbnail frame as video. Keeps subtitles & chapters. ~90% smaller than video!</p>
+            </div>
+        </div>
+
+        <!-- GitHub Pages Setup -->
+        <div class="bg-slate-800/50 rounded-xl border border-slate-700 p-6 mt-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                Host This on GitHub Pages
+            </h2>
+            <div class="space-y-4 text-gray-300">
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-gray-600/50 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">1</span>
+                    <p>Create a new GitHub repository (e.g., <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-blue-300">ytdl-linux</code> or <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-blue-300">your-username.github.io</code> for your main site)</p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-gray-600/50 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">2</span>
+                    <p>Upload this <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-violet-300">index.html</code> file to the repository root</p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-gray-600/50 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">3</span>
+                    <p>Go to <span class="text-white font-medium">Settings → Pages</span> in your repository</p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-gray-600/50 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">4</span>
+                    <p>Under "Source", select <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-green-300">Deploy from a branch</code> → <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-green-300">main</code> → <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-green-300">/ (root)</code></p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="flex-shrink-0 w-6 h-6 bg-gray-600/50 rounded-full flex items-center justify-center text-sm font-medium text-gray-300">5</span>
+                    <p>Click <span class="text-white font-medium">Save</span> — Your site will be live at <code class="code-font bg-slate-700 px-2 py-0.5 rounded text-cyan-300">https://your-username.github.io/repo-name/</code></p>
+                </div>
+                <div class="mt-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
+                    <p class="text-sm text-blue-300">💡 <strong>Tip:</strong> If you name your repo <code class="code-font bg-slate-700 px-1.5 py-0.5 rounded text-blue-200">your-username.github.io</code>, it becomes your main GitHub Pages site at that URL!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+const bashScript = `#!/bin/bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# YouTube Downloader for Linux
+# Converted from Windows PowerShell with additional features
+# Features: Auto-setup, Audio extraction, Single-frame video mode
+# ═══════════════════════════════════════════════════════════════════════════════
+
+set -e
+
+# Colors for output
+RED='\\033[0;31m'
+GREEN='\\033[0;32m'
+YELLOW='\\033[1;33m'
+BLUE='\\033[0;34m'
+PURPLE='\\033[0;35m'
+CYAN='\\033[0;36m'
+NC='\\033[0m' # No Color
+
+# Get script directory (works even with symlinks)
+SCRIPT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="\${SCRIPT_DIR}/config.json"
+YTDLP_BIN="\${SCRIPT_DIR}/yt-dlp"
+COOKIES_FILE=""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Utility Functions
+# ─────────────────────────────────────────────────────────────────────────────
+
+print_header() {
+    echo -e "\${PURPLE}"
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║           YouTube Downloader for Linux v2.0                   ║"
+    echo "║         Video • Audio • Single-Frame Audio Mode               ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo -e "\${NC}"
+}
+
+print_status() {
+    echo -e "\${BLUE}[INFO]\${NC} \$1"
+}
+
+print_success() {
+    echo -e "\${GREEN}[SUCCESS]\${NC} \$1"
+}
+
+print_warning() {
+    echo -e "\${YELLOW}[WARNING]\${NC} \$1"
+}
+
+print_error() {
+    echo -e "\${RED}[ERROR]\${NC} \$1"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependency Checks
+# ─────────────────────────────────────────────────────────────────────────────
+
+check_dependencies() {
+    local missing=()
+    
+    # Check for curl or wget
+    if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
+        missing+=("curl or wget")
+    fi
+    
+    # Check for ffmpeg (required for audio and single-frame modes)
+    if ! command -v ffmpeg &> /dev/null; then
+        missing+=("ffmpeg")
+    fi
+    
+    # Check for jq (for JSON parsing, optional but helpful)
+    if ! command -v jq &> /dev/null; then
+        print_warning "jq not found. Installing is recommended for better config handling."
+        print_warning "Install with: sudo apt install jq (Debian/Ubuntu) or sudo pacman -S jq (Arch)"
+    fi
+    
+    if [ \${#missing[@]} -ne 0 ]; then
+        print_error "Missing required dependencies: \${missing[*]}"
+        echo ""
+        echo "Install them using your package manager:"
+        echo "  Debian/Ubuntu: sudo apt install curl ffmpeg jq"
+        echo "  Fedora:        sudo dnf install curl ffmpeg jq"
+        echo "  Arch:          sudo pacman -S curl ffmpeg jq"
+        echo "  macOS:         brew install curl ffmpeg jq"
+        exit 1
+    fi
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# yt-dlp Management
+# ─────────────────────────────────────────────────────────────────────────────
+
+download_file() {
+    local url="\$1"
+    local output="\$2"
+    
+    if command -v curl &> /dev/null; then
+        curl -L -o "\$output" "\$url"
+    elif command -v wget &> /dev/null; then
+        wget -O "\$output" "\$url"
+    fi
+}
+
+ensure_ytdlp() {
+    if [ ! -f "\$YTDLP_BIN" ]; then
+        print_status "yt-dlp not found. Downloading latest version..."
+        
+        # Detect architecture
+        local arch=""
+        case "\$(uname -m)" in
+            x86_64)  arch="yt-dlp_linux" ;;
+            aarch64) arch="yt-dlp_linux_aarch64" ;;
+            armv7l)  arch="yt-dlp_linux_armv7l" ;;
+            *)
+                print_warning "Unknown architecture. Downloading generic version..."
+                arch="yt-dlp"
+                ;;
+        esac
+        
+        local url="https://github.com/yt-dlp/yt-dlp/releases/latest/download/\${arch}"
+        
+        if download_file "\$url" "\$YTDLP_BIN"; then
+            chmod +x "\$YTDLP_BIN"
+            print_success "yt-dlp downloaded successfully!"
+        else
+            print_error "Failed to download yt-dlp. Please download manually from:"
+            echo "https://github.com/yt-dlp/yt-dlp/releases"
+            exit 1
+        fi
+    fi
+}
+
+update_ytdlp() {
+    print_status "Checking for yt-dlp updates..."
+    "\$YTDLP_BIN" -U || print_warning "Could not update yt-dlp (might already be latest)"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuration Management
+# ─────────────────────────────────────────────────────────────────────────────
+
+read_config() {
+    if [ -f "\$CONFIG_FILE" ]; then
+        if command -v jq &> /dev/null; then
+            DOWNLOAD_DIR=\$(jq -r '.download_dir // empty' "\$CONFIG_FILE" 2>/dev/null)
+        else
+            # Fallback: simple grep parsing
+            DOWNLOAD_DIR=\$(grep -oP '"download_dir"\\s*:\\s*"\\K[^"]+' "\$CONFIG_FILE" 2>/dev/null || echo "")
+        fi
+        
+        if [ -n "\$DOWNLOAD_DIR" ] && [ -d "\$DOWNLOAD_DIR" ]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+write_config() {
+    local dir="\$1"
+    echo "{" > "\$CONFIG_FILE"
+    echo "  \\"download_dir\\": \\"\$dir\\"," >> "\$CONFIG_FILE"
+    echo "  \\"created\\": \\"\$(date -Iseconds)\\"" >> "\$CONFIG_FILE"
+    echo "}" >> "\$CONFIG_FILE"
+}
+
+setup_config() {
+    echo ""
+    print_status "First-time setup - Configure download location"
+    echo ""
+    echo -e "Default location: \${CYAN}\${SCRIPT_DIR}\${NC}"
+    echo ""
+    read -p "Enter download directory (press Enter for default): " user_dir
+    
+    if [ -z "\$user_dir" ]; then
+        DOWNLOAD_DIR="\$SCRIPT_DIR"
+    else
+        # Expand ~ to home directory
+        DOWNLOAD_DIR="\${user_dir/#\\~/$HOME}"
+    fi
+    
+    # Create directory if it doesn't exist
+    if [ ! -d "\$DOWNLOAD_DIR" ]; then
+        print_status "Creating directory: \$DOWNLOAD_DIR"
+        mkdir -p "\$DOWNLOAD_DIR" || {
+            print_error "Could not create directory. Using script directory instead."
+            DOWNLOAD_DIR="\$SCRIPT_DIR"
+        }
+    fi
+    
+    # Test write permission
+    if [ ! -w "\$DOWNLOAD_DIR" ]; then
+        print_error "No write permission for \$DOWNLOAD_DIR. Using script directory."
+        DOWNLOAD_DIR="\$SCRIPT_DIR"
+    fi
+    
+    write_config "\$DOWNLOAD_DIR"
+    print_success "Configuration saved!"
+    echo ""
+}
+
+create_desktop_entry() {
+    local desktop_file="\$HOME/.local/share/applications/ytdl.desktop"
+    local desktop_dir="\$HOME/.local/share/applications"
+    
+    mkdir -p "\$desktop_dir"
+    
+    cat > "\$desktop_file" << EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=YouTube Downloader
+Comment=Download YouTube videos and audio
+Exec=\${SCRIPT_DIR}/\$(basename "\$0")
+Icon=youtube
+Terminal=true
+Categories=Network;AudioVideo;
+EOF
+    
+    print_success "Desktop entry created: \$desktop_file"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cookie Detection
+# ─────────────────────────────────────────────────────────────────────────────
+
+find_cookies() {
+    local locations=(
+        "\$SCRIPT_DIR/cookies.txt"
+        "\$DOWNLOAD_DIR/cookies.txt"
+        "\$HOME/cookies.txt"
+        "\$HOME/.config/yt-dlp/cookies.txt"
+    )
+    
+    for loc in "\${locations[@]}"; do
+        if [ -f "\$loc" ]; then
+            COOKIES_FILE="\$loc"
+            print_status "Found cookies file: \$COOKIES_FILE"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Download Functions
+# ─────────────────────────────────────────────────────────────────────────────
+
+build_base_args() {
+    local args=(
+        "--embed-thumbnail"
+        "--embed-chapters"
+        "--embed-subs"
+        "--sub-langs" "en"
+        "--write-auto-subs"
+        "--abort-on-unavailable-fragment"
+        "--fragment-retries" "999"
+        "--no-mtime"
+    )
+    
+    if [ -n "\$COOKIES_FILE" ]; then
+        args+=("--cookies" "\$COOKIES_FILE")
+    fi
+    
+    echo "\${args[@]}"
+}
+
+download_video() {
+    local url="\$1"
+    print_status "Downloading video with best quality..."
+    
+    local args=(
+        "-f" "bestvideo*+bestaudio/best"
+        "-S" "res,ext:mp4:m4a"
+        "--recode" "mp4"
+        \$(build_base_args)
+        "\$url"
+    )
+    
+    "\$YTDLP_BIN" "\${args[@]}"
+}
+
+download_audio() {
+    local url="\$1"
+    print_status "Extracting audio only..."
+    
+    local args=(
+        "-f" "bestaudio"
+        "-x"
+        "--audio-format" "m4a"
+        "--audio-quality" "0"
+        "--embed-thumbnail"
+        "--embed-metadata"
+    )
+    
+    if [ -n "\$COOKIES_FILE" ]; then
+        args+=("--cookies" "\$COOKIES_FILE")
+    fi
+    
+    args+=("\$url")
+    
+    "\$YTDLP_BIN" "\${args[@]}"
+}
+
+download_single_frame() {
+    local url="\$1"
+    print_status "Downloading audio with single-frame video..."
+    print_status "This preserves subtitles, chapters, and metadata while saving ~90% space"
+    echo ""
+    
+    # First, get the video info to determine output filename
+    print_status "Fetching video information..."
+    local title
+    title=\$("\$YTDLP_BIN" --get-filename -o "%(title)s" "\$url" 2>/dev/null | head -1)
+    local safe_title
+    safe_title=\$(echo "\$title" | tr -cd '[:alnum:] ._-' | tr ' ' '_' | cut -c1-200)
+    
+    local temp_dir
+    temp_dir=\$(mktemp -d)
+    local temp_video="\${temp_dir}/temp_video.mp4"
+    local temp_audio="\${temp_dir}/temp_audio.m4a"
+    local temp_thumb="\${temp_dir}/thumb.jpg"
+    local temp_subs="\${temp_dir}/subs.srt"
+    local output_file="\${DOWNLOAD_DIR}/\${safe_title}_singleframe.mp4"
+    
+    cleanup() {
+        rm -rf "\$temp_dir"
+    }
+    trap cleanup EXIT
+    
+    # Download the video with all metadata (we need it for subtitles, chapters, etc.)
+    print_status "Downloading source video..."
+    local dl_args=(
+        "-f" "bestvideo*+bestaudio/best"
+        "-S" "res:480,ext:mp4:m4a"  # Use 480p to speed up download
+        "--recode" "mp4"
+        "--embed-subs"
+        "--sub-langs" "en"
+        "--write-auto-subs"
+        "--write-thumbnail"
+        "-o" "\$temp_video"
+    )
+    
+    if [ -n "\$COOKIES_FILE" ]; then
+        dl_args+=("--cookies" "\$COOKIES_FILE")
+    fi
+    
+    dl_args+=("\$url")
+    
+    "\$YTDLP_BIN" "\${dl_args[@]}"
+    
+    # Find the actual downloaded video file (yt-dlp might add extension)
+    local actual_video
+    actual_video=\$(find "\$temp_dir" -name "temp_video*" -type f | grep -E '\\.(mp4|mkv|webm)$' | head -1)
+    
+    if [ -z "\$actual_video" ] || [ ! -f "\$actual_video" ]; then
+        print_error "Could not find downloaded video file"
+        exit 1
+    fi
+    
+    # Find thumbnail
+    local actual_thumb
+    actual_thumb=\$(find "\$temp_dir" -name "temp_video*" -type f | grep -E '\\.(jpg|jpeg|png|webp)$' | head -1)
+    
+    print_status "Extracting single frame and audio..."
+    
+    # Get video duration
+    local duration
+    duration=\$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "\$actual_video" 2>/dev/null)
+    
+    # Extract a frame from 10% into the video (usually a good representative frame)
+    local seek_time
+    seek_time=\$(echo "\$duration * 0.1" | bc 2>/dev/null || echo "5")
+    
+    # Use thumbnail if available, otherwise extract frame from video
+    local frame_source
+    if [ -n "\$actual_thumb" ] && [ -f "\$actual_thumb" ]; then
+        print_status "Using video thumbnail as static frame"
+        # Convert thumbnail to proper format
+        ffmpeg -y -i "\$actual_thumb" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black" "\${temp_dir}/frame.jpg" 2>/dev/null
+        frame_source="\${temp_dir}/frame.jpg"
+    else
+        print_status "Extracting frame from video at \${seek_time}s"
+        ffmpeg -y -ss "\$seek_time" -i "\$actual_video" -vframes 1 -q:v 2 "\${temp_dir}/frame.jpg" 2>/dev/null
+        frame_source="\${temp_dir}/frame.jpg"
+    fi
+    
+    # Build ffmpeg command to create single-frame video with full audio
+    # -loop 1 on input image, -t for duration, copy audio stream
+    print_status "Creating single-frame video with audio..."
+    
+    # Check for subtitle streams in source
+    local sub_args=()
+    if ffprobe -v error -select_streams s -show_entries stream=index -of csv=p=0 "\$actual_video" 2>/dev/null | grep -q .; then
+        print_status "Embedding subtitles from source..."
+        # Extract subtitles first
+        ffmpeg -y -i "\$actual_video" -map 0:s:0? -c:s srt "\$temp_subs" 2>/dev/null || true
+        if [ -f "\$temp_subs" ] && [ -s "\$temp_subs" ]; then
+            sub_args=("-i" "\$temp_subs" "-c:s" "mov_text" "-metadata:s:s:0" "language=eng")
+        fi
+    fi
+    
+    # Create the final video
+    ffmpeg -y \\
+        -loop 1 -i "\$frame_source" \\
+        -i "\$actual_video" \\
+        \${sub_args[@]+"\\${sub_args[@]}"} \\
+        -map 0:v:0 -map 1:a:0 \${sub_args:+-map 2:s:0} \\
+        -c:v libx264 -tune stillimage -crf 28 -preset fast \\
+        -c:a aac -b:a 192k \\
+        -t "\$duration" \\
+        -movflags +faststart \\
+        -pix_fmt yuv420p \\
+        "\$output_file" 2>/dev/null
+    
+    if [ -f "\$output_file" ]; then
+        # Get file sizes for comparison
+        local original_size=\$(du -h "\$actual_video" | cut -f1)
+        local new_size=\$(du -h "\$output_file" | cut -f1)
+        
+        echo ""
+        print_success "Single-frame video created successfully!"
+        echo -e "  Original size: \${YELLOW}\$original_size\${NC}"
+        echo -e "  New size:      \${GREEN}\$new_size\${NC}"
+        echo -e "  Output: \${CYAN}\$output_file\${NC}"
+    else
+        print_error "Failed to create single-frame video"
+        exit 1
+    fi
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Menu
+# ─────────────────────────────────────────────────────────────────────────────
+
+show_menu() {
+    echo ""
+    echo -e "\${CYAN}Download Options:\${NC}"
+    echo "  1) Video (best quality, full video + audio)"
+    echo "  2) Audio only (extract audio as M4A)"
+    echo "  3) Audio + Single Frame (audio with static image, keeps subs)"
+    echo "  4) Update yt-dlp"
+    echo "  5) Change download directory"
+    echo "  6) Exit"
+    echo ""
+}
+
+validate_url() {
+    local url="\$1"
+    if [[ "\$url" =~ ^https?:// ]]; then
+        return 0
+    fi
+    return 1
+}
+
+get_url() {
+    local url=""
+    while true; do
+        echo ""
+        read -p "Enter YouTube URL: " url
+        if validate_url "\$url"; then
+            echo "\$url"
+            return 0
+        else
+            print_error "Invalid URL. Please enter a valid URL starting with http:// or https://"
+        fi
+    done
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Entry Point
+# ─────────────────────────────────────────────────────────────────────────────
+
+main() {
+    print_header
+    
+    # Check dependencies
+    check_dependencies
+    
+    # Ensure yt-dlp is installed
+    ensure_ytdlp
+    
+    # Load or create config
+    if ! read_config; then
+        setup_config
+        
+        # Offer to create desktop entry
+        read -p "Create desktop menu entry? [y/N]: " create_desktop
+        if [[ "\$create_desktop" =~ ^[Yy] ]]; then
+            create_desktop_entry
+        fi
+        
+        print_success "Setup complete!"
+        echo ""
+    fi
+    
+    # Find cookies file
+    find_cookies || true
+    
+    # Change to download directory
+    cd "\$DOWNLOAD_DIR" || {
+        print_error "Could not access download directory: \$DOWNLOAD_DIR"
+        exit 1
+    }
+    
+    print_status "Download directory: \$DOWNLOAD_DIR"
+    
+    # Main loop
+    while true; do
+        show_menu
+        read -p "Select option [1-6]: " choice
+        
+        case "\$choice" in
+            1)
+                url=\$(get_url)
+                update_ytdlp
+                download_video "\$url"
+                print_success "Download completed!"
+                ;;
+            2)
+                url=\$(get_url)
+                update_ytdlp
+                download_audio "\$url"
+                print_success "Audio extraction completed!"
+                ;;
+            3)
+                url=\$(get_url)
+                update_ytdlp
+                download_single_frame "\$url"
+                ;;
+            4)
+                update_ytdlp
+                print_success "yt-dlp is up to date!"
+                ;;
+            5)
+                setup_config
+                cd "\$DOWNLOAD_DIR"
+                ;;
+            6)
+                print_status "Goodbye!"
+                exit 0
+                ;;
+            *)
+                print_warning "Invalid option. Please select 1-6."
+                ;;
+        esac
+        
+        echo ""
+        read -p "Press Enter to continue..."
+    done
+}
+
+# Run main function
+main "\$@"
+`;
+
+        // Display the script
+        document.getElementById('script-content').textContent = bashScript;
+
+        function copyScript() {
+            navigator.clipboard.writeText(bashScript).then(() => {
+                const btn = document.getElementById('copy-text');
+                const icon = document.getElementById('copy-icon');
+                btn.textContent = 'Copied!';
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+                
+                setTimeout(() => {
+                    btn.textContent = 'Copy Script';
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>';
+                }, 2000);
+            });
+        }
+
+        function downloadScript() {
+            const blob = new Blob([bashScript], { type: 'text/x-shellscript' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ytdl.sh';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Make functions available globally
+        window.copyScript = copyScript;
+        window.downloadScript = downloadScript;
+    </script>
+</body>
+</html>
