@@ -44,6 +44,10 @@ command_exists() {
     command -v "$1" &>/dev/null
 }
 
+python_module_exists() {
+    python3 -c "import $1" 2>/dev/null
+}
+
 get_config_value() {
     local key="$1"
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -84,6 +88,47 @@ sanitize_filename() {
 #-------------------------------------------------------------------------------
 # Dependency Management
 #-------------------------------------------------------------------------------
+detect_package_manager() {
+    if command_exists pacman; then
+        echo "pacman"
+    elif command_exists apt-get; then
+        echo "apt"
+    elif command_exists dnf; then
+        echo "dnf"
+    elif command_exists zypper; then
+        echo "zypper"
+    elif command_exists apk; then
+        echo "apk"
+    elif command_exists brew; then
+        echo "brew"
+    else
+        echo "unknown"
+    fi
+}
+
+get_mutagen_package_name() {
+    local pm
+    pm=$(detect_package_manager)
+    
+    case "$pm" in
+        pacman)
+            echo "python-mutagen"
+            ;;
+        apt|dnf|zypper)
+            echo "python3-mutagen"
+            ;;
+        apk)
+            echo "py3-mutagen"
+            ;;
+        brew)
+            echo "mutagen"
+            ;;
+        *)
+            echo "python3-mutagen"
+            ;;
+    esac
+}
+
 check_dependencies() {
     print_header "CHECKING DEPENDENCIES"
     
@@ -98,6 +143,15 @@ check_dependencies() {
             print_success "$cmd found"
         fi
     done
+    
+    # Check for mutagen (required for proper metadata embedding)
+    if python_module_exists "mutagen"; then
+        print_success "mutagen found"
+    else
+        local mutagen_pkg
+        mutagen_pkg=$(get_mutagen_package_name)
+        missing+=("$mutagen_pkg")
+    fi
     
     # Optional but recommended
     if ! command_exists atomicparsley; then
@@ -127,28 +181,10 @@ check_dependencies() {
     
     # Notify about optional deps
     if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        print_warning "Optional (for better thumbnails): ${optional_missing[*]}"
+        print_warning "Optional (fallback for thumbnails): ${optional_missing[*]}"
     fi
     
     print_success "All required dependencies satisfied"
-}
-
-detect_package_manager() {
-    if command_exists pacman; then
-        echo "pacman"
-    elif command_exists apt-get; then
-        echo "apt"
-    elif command_exists dnf; then
-        echo "dnf"
-    elif command_exists zypper; then
-        echo "zypper"
-    elif command_exists apk; then
-        echo "apk"
-    elif command_exists brew; then
-        echo "brew"
-    else
-        echo "unknown"
-    fi
 }
 
 install_packages() {
@@ -412,25 +448,32 @@ download_with_fallback() {
     local url="$2"
     local output_template="${3:-}"
     
-    # First attempt: without cookies (uses mobile clients)
+    # First attempt: web client without cookies
     print_info "Attempting download..."
-    if attempt_download "$mode" "$url" "" "$output_template"; then
+    if attempt_download "$mode" "$url" "" "$output_template" "false"; then
         return 0
     fi
     
-    # Check if cookies are available for retry
+    # Second attempt: with cookies if available
     local cookies_file=""
     if cookies_file=$(find_cookies 2>/dev/null); then
         echo
         print_warning "First attempt failed. Retrying with cookies..."
         print_warning "Using cookies: $cookies_file"
         
-        if attempt_download "$mode" "$url" "$cookies_file" "$output_template"; then
+        if attempt_download "$mode" "$url" "$cookies_file" "$output_template" "false"; then
+            return 0
+        fi
+        
+        # Third attempt: cookies + mobile clients as last resort
+        echo
+        print_warning "Retrying with mobile clients..."
+        if attempt_download "$mode" "$url" "$cookies_file" "$output_template" "true"; then
             return 0
         fi
     fi
     
-    # Both attempts failed
+    # All attempts failed
     echo
     print_error "Download failed"
     echo
@@ -447,14 +490,17 @@ attempt_download() {
     local url="$2"
     local cookies_file="${3:-}"
     local output_template="${4:-}"
+    local use_mobile="${5:-false}"
     
     local -a args=()
     
-    # Add cookies or try mobile clients
+    # Add cookies if provided
     if [[ -n "$cookies_file" ]]; then
         args+=('--cookies' "$cookies_file")
-    else
-        # Try mobile clients first (often less restricted for public videos)
+    fi
+    
+    # Use mobile clients only as fallback (they often have lower quality)
+    if [[ "$use_mobile" == "true" ]]; then
         args+=('--extractor-args' 'youtube:player_client=android,ios,web')
     fi
     
@@ -467,11 +513,11 @@ attempt_download() {
     )
     
     if [[ "$mode" == "video" ]]; then
-        # Video-specific args
+        # Video-specific args - prefer highest quality
         args+=(
-            '-f' 'bestvideo*+bestaudio/best'
-            '-S' 'res,ext:mp4:m4a'
-            '--recode' 'mp4'
+            '-f' 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best'
+            '-S' 'res:2160,res:1440,res:1080,res:720,ext:mp4:m4a'
+            '--merge-output-format' 'mp4'
             '--embed-thumbnail'
             '--embed-chapters'
             '--embed-subs'
@@ -482,7 +528,7 @@ attempt_download() {
     else
         # Audio-specific args
         args+=(
-            '-f' 'bestaudio*/best'
+            '-f' 'bestaudio[ext=m4a]/bestaudio/best'
             '-S' 'ext:m4a:mp3:ogg'
         )
     fi
@@ -529,19 +575,19 @@ download_audio_with_frame() {
     local cookies_file=""
     
     # Try without cookies first
-    video_info=$("$YTDLP_BIN" --extractor-args 'youtube:player_client=android,ios,web' -j "$url" 2>/dev/null) || {
+    if ! video_info=$("$YTDLP_BIN" -j "$url" 2>/dev/null); then
         # Retry with cookies
         if cookies_file=$(find_cookies 2>/dev/null); then
             print_warning "Retrying with cookies..."
-            video_info=$("$YTDLP_BIN" --cookies "$cookies_file" -j "$url" 2>/dev/null) || {
+            if ! video_info=$("$YTDLP_BIN" --cookies "$cookies_file" -j "$url" 2>/dev/null); then
                 print_error "Failed to fetch video info"
                 return 1
-            }
+            fi
         else
             print_error "Failed to fetch video info"
             return 1
         fi
-    }
+    fi
     
     local video_title duration uploader upload_date description
     video_title=$(echo "$video_info" | jq -r '.title // "video"')
@@ -582,13 +628,24 @@ download_audio_with_frame() {
     #---------------------------------------------------------------------------
     print_info "Downloading thumbnail..."
     
-    "$YTDLP_BIN" \
-        --extractor-args 'youtube:player_client=android,ios,web' \
+    # Try without cookies first
+    if ! "$YTDLP_BIN" \
         --write-thumbnail \
         --skip-download \
         --convert-thumbnails jpg \
         -o "$temp_dir/thumbnail" \
-        "$url" 2>/dev/null || true
+        "$url" 2>/dev/null; then
+        # Retry with cookies if available
+        if cookies_file=$(find_cookies 2>/dev/null); then
+            "$YTDLP_BIN" \
+                --cookies "$cookies_file" \
+                --write-thumbnail \
+                --skip-download \
+                --convert-thumbnails jpg \
+                -o "$temp_dir/thumbnail" \
+                "$url" 2>/dev/null || true
+        fi
+    fi
     
     local thumb_file
     thumb_file=$(find "$temp_dir" -name 'thumbnail*.jpg' -type f 2>/dev/null | head -1)
@@ -617,8 +674,8 @@ download_audio_with_frame() {
     #---------------------------------------------------------------------------
     print_info "Downloading subtitles..."
     
-    "$YTDLP_BIN" \
-        --extractor-args 'youtube:player_client=android,ios,web' \
+    # Try without cookies first
+    if ! "$YTDLP_BIN" \
         --write-subs \
         --write-auto-subs \
         --sub-langs en \
@@ -626,7 +683,21 @@ download_audio_with_frame() {
         --convert-subs srt \
         --skip-download \
         -o "$temp_dir/subs" \
-        "$url" 2>/dev/null || true
+        "$url" 2>/dev/null; then
+        # Retry with cookies if available
+        if cookies_file=$(find_cookies 2>/dev/null); then
+            "$YTDLP_BIN" \
+                --cookies "$cookies_file" \
+                --write-subs \
+                --write-auto-subs \
+                --sub-langs en \
+                --sub-format 'srt/vtt/best' \
+                --convert-subs srt \
+                --skip-download \
+                -o "$temp_dir/subs" \
+                "$url" 2>/dev/null || true
+        fi
+    fi
     
     local subs_file
     subs_file=$(find "$temp_dir" -name 'subs*.srt' -type f 2>/dev/null | head -1)
