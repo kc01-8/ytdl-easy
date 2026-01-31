@@ -6,6 +6,11 @@
   <br />
 
   <a href="https://kc01-8.github.io/ytdl-easy/">
+    <p>Installation</p>
+  </a>
+
+
+  <a href="https://kc01-8.github.io/ytdl-easy/">
     <img src="https://raw.githubusercontent.com/kc01-8/screen/refs/heads/main/github%20preview%20ytld-easy.png" alt="ytdl-easy">
   </a>
 
