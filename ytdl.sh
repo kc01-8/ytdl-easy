@@ -1,7 +1,6 @@
 #!/bin/bash
 #===============================================================================
-# YouTube Downloader - Linux Edition
-# Converted from PowerShell with auto-setup, updates, and audio+frame mode
+# YouTube Downloader - yt-dlp made easy
 #===============================================================================
 
 set -euo pipefail
