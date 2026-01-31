@@ -36,10 +36,18 @@
         .text-stone { color: var(--stone); }
         .text-light-stone { color: var(--light-stone); }
         
-        pre::-webkit-scrollbar { height: 8px; width: 8px; }
-        pre::-webkit-scrollbar-track { background: var(--sand); border-radius: 4px; }
-        pre::-webkit-scrollbar-thumb { background: var(--light-stone); border-radius: 4px; }
-        pre::-webkit-scrollbar-thumb:hover { background: var(--stone); }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .code-card .overflow-auto {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .code-card .overflow-auto::-webkit-scrollbar {
+            display: none;
+        }
         
         .btn-primary {
             background-color: var(--terracotta);
