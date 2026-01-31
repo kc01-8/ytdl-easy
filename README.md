@@ -13,7 +13,7 @@
   <br />
 
   <a href="https://github.com/kc01-8/ytdl-easy/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/kc01-8/ytdl-easy?style=flat-square&color=blue" alt="MIT License">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
   </a>
 
 </div>
