@@ -1,6 +1,7 @@
 #!/bin/bash
 #===============================================================================
-# YouTube Downloader - yt-dlp made easy
+# YouTube Downloader - Linux Edition
+# Converted from PowerShell with auto-setup, updates, and audio+frame mode
 #===============================================================================
 
 set -euo pipefail
@@ -18,7 +19,7 @@ YTDLP_BIN="$SCRIPT_DIR/yt-dlp"
 DESKTOP_FILE="$HOME/.local/share/applications/${SCRIPT_NAME}.desktop"
 
 #-------------------------------------------------------------------------------
-# Colors and Printing
+# Colors and Printing (ALL go to stderr so they don't interfere with data)
 #-------------------------------------------------------------------------------
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -188,7 +189,23 @@ check_dependencies() {
         
         read -rp "Attempt automatic installation? [Y/n]: " response
         if [[ ! "$response" =~ ^[Nn] ]]; then
-            install_packages "${missing[@]}"
+            if ! install_packages "${missing[@]}"; then
+                echo
+                print_error "Automatic installation failed"
+                echo
+                echo "Please install manually:"
+                echo "  sudo apt install ${missing[*]}"
+                echo "  # or for your package manager"
+                echo
+                echo "If apt-get update fails, you may have broken repositories."
+                echo "Try: sudo apt-get update --fix-missing"
+                echo "Or remove problematic repos from /etc/apt/sources.list.d/"
+                echo
+                read -rp "Continue anyway? [y/N]: " continue_anyway
+                if [[ ! "$continue_anyway" =~ ^[Yy] ]]; then
+                    exit 1
+                fi
+            fi
         else
             print_error "Cannot continue without: ${missing[*]}"
             echo
@@ -221,8 +238,17 @@ install_packages() {
             sudo pacman -Sy --noconfirm "${pkgs[@]}"
             ;;
         apt)
-            sudo apt-get update
-            sudo apt-get install -y "${pkgs[@]}"
+            # Try update but don't fail if it has errors (broken repos)
+            print_info "Updating package lists..."
+            if ! sudo apt-get update 2>&1; then
+                print_warning "apt-get update had errors (possibly broken repos)"
+                print_info "Attempting to install packages anyway..."
+            fi
+            # Try to install - this is what actually matters
+            if ! sudo apt-get install -y "${pkgs[@]}"; then
+                print_error "Failed to install packages"
+                return 1
+            fi
             ;;
         dnf)
             sudo dnf install -y "${pkgs[@]}"
