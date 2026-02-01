@@ -1,7 +1,6 @@
 #!/bin/bash
 #===============================================================================
-# YouTube Downloader - Linux Edition
-# Converted from PowerShell with auto-setup, updates, and audio+frame mode
+# YouTube Downloader - yt-dlp made easy
 #===============================================================================
 
 set -euo pipefail
@@ -19,7 +18,7 @@ YTDLP_BIN="$SCRIPT_DIR/yt-dlp"
 DESKTOP_FILE="$HOME/.local/share/applications/${SCRIPT_NAME}.desktop"
 
 #-------------------------------------------------------------------------------
-# Colors and Printing (ALL go to stderr so they don't interfere with data)
+# Colors and Printing
 #-------------------------------------------------------------------------------
 RED='\033[0;31m'
 GREEN='\033[0;32m'
